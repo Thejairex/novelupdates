@@ -11,7 +11,6 @@ import os
 class Proxies:
     def __init__(self):
         if not os.path.exists("proxies.json"):
-            print("no exite")
             response = requests.get("https://api.proxyscrape.com/v3/free-proxy-list/get?request=displayproxies&proxy_format=protocolipport&format=json")
             data = response.json()["proxies"]
             
@@ -22,7 +21,10 @@ class Proxies:
         else:
             self.proxies = json.load(open("proxies.json"))
 
-    def get(self):
+    def get_bs4(self):
         proxy = random.choice(self.proxies)
         return {f"{proxy["protocol"]}": f"http://{proxy["proxy"]}",} 
     
+    def get(self):
+        proxy = random.choice(self.proxies)
+        return proxy["proxy"]
