@@ -3,10 +3,12 @@ import cloudscraper
 import json
 import random
 import time
+import os
 from bs4 import BeautifulSoup
 
 from proxy import Proxies
 from agent import Agent
+
     
 class Novel:
     def __init__(self):
@@ -20,10 +22,6 @@ class Novel:
         response = self.scraper.get(url, proxies=self.proxies.get_bs4(), headers=self.agents.get_bs4())
         return BeautifulSoup(response.content, 'html.parser')
     
-    def save_html(self, url):
-        response = self.scraper.get(url, proxies=self.proxies.get_bs4(), headers=self.agents.get_bs4())
-        with open('novel.html', 'w', encoding='utf-8') as file:
-            file.write(str(BeautifulSoup(response.content, 'html.parser')))
             
     def find_data(self, soup):
         title = soup.find('div', class_='seriestitlenu')
@@ -73,30 +71,45 @@ class Novel:
     
     def find_elements(self, soup: BeautifulSoup):
         pass
-
-novels = Novel()
-page = 1
-soup = novels.get_soup("https://www.novelupdates.com/series/saturdays-master/")
-
-try: 
-    while page <= 892:
-        soup_farm = novels.get_soup(f"https://www.novelupdates.com/series-ranking/?rank=sixmonths&pg={page}") 
-        novels.find_links(soup_farm)
-        time.sleep(random.uniform(1,3))
-        print(len(novels.link_to_extract))
-        page += 1
     
-    # export set
-    with open('novel_links.txt', 'w') as file:
-        for link in novels.link_to_extract:
-            file.write(link + '\n')
-
-except KeyboardInterrupt:
-    # export current set
-    with open('novel_links.txt', 'w') as file:
-        for link in novels.link_to_extract:
-            file.write(link + '\n')
-    exit("KeyboardInterrupt")
+    def export_links(self):
+        with open('novel_links.txt', 'w') as file:
+            for link in self.link_to_extract:
+                file.write(link + '\n')
+            file.close()
     
-except Exception as e:
-    raise e
+    def import_links(self):
+        with open('novel_links.txt', 'r') as file:
+            for line in file:
+                line = line.strip()
+                self.link_to_extract.add(line)
+            file.close()
+
+if __name__ == "__main__":
+    novels = Novel()
+    page = 1
+    
+    if not os.path.exists('novel_links.txt'):
+        try: 
+            while page <= 892:
+                soup_farm = novels.get_soup(f"https://www.novelupdates.com/series-ranking/?rank=sixmonths&pg={page}") 
+                novels.find_links(soup_farm)
+                time.sleep(random.uniform(1,3))
+                print(len(novels.link_to_extract))
+                page += 1
+            
+            # export set
+            novels.export_links()
+
+        except KeyboardInterrupt:
+            # export current set
+            novels.export_links()
+            
+        except Exception as e:
+            raise e
+    else:
+        novels.import_links()
+
+    print(f"Total novels: {len(novels.link_to_extract)}")
+    print(f"View firts links: {list(novels.link_to_extract)[0:5]}")
+    print(f"View last links: {list(novels.link_to_extract)[-6:-1]}")
