@@ -41,10 +41,11 @@ class Novel:
         if completed == "Yes": completed = True
         else: completed = False
         
-        recommendations = soup.find_all('h5', class_="seriesother")[-2].find_all_next('a', limit = 6)
-        recommendations = [recom.get('href') for recom in recommendations if recom.get('href').startswith("https://www.novelupdates.com/series/")]
-        for recom in recommendations: 
-            if recom not in self.link_to_extract: self.link_to_extract.add(recom)
+        # get recommendations (6 links)
+        # recommendations = soup.find_all('h5', class_="seriesother")[-2].find_all_next('a', limit = 6)
+        # recommendations = [recom.get('href') for recom in recommendations if recom.get('href').startswith("https://www.novelupdates.com/series/")]
+        # for recom in recommendations: 
+        #     if recom not in self.link_to_extract: self.link_to_extract.add(recom)
         
         return {
             "title": title.text,
@@ -59,7 +60,7 @@ class Novel:
             "completed": completed,
             "author": author
         }
-    
+
     def find_links(self, soup: BeautifulSoup):
         body = soup.find('div', class_="w-blog-content other").find_all('a')
 
@@ -68,19 +69,34 @@ class Novel:
             if url:
                 if url.startswith("https://www.novelupdates.com/series/"):
                     self.link_to_extract.add(url)
-                    
+
     
     def find_elements(self, soup: BeautifulSoup):
         pass
 
 novels = Novel()
-page = 2
+page = 1
 soup = novels.get_soup("https://www.novelupdates.com/series/saturdays-master/")
 
-# for i in range(1, 60):
-#     soup_farm = novels.get_soup(f"https://www.novelupdates.com/series-ranking/?rank=sixmonths&pg={i}") 
-#     novels.find_links(soup_farm)
-#     time.sleep(random.uniform(1,3))
-# print(len(novels.link_to_extract))
+try: 
+    while page <= 892:
+        soup_farm = novels.get_soup(f"https://www.novelupdates.com/series-ranking/?rank=sixmonths&pg={page}") 
+        novels.find_links(soup_farm)
+        time.sleep(random.uniform(1,3))
+        print(len(novels.link_to_extract))
+        page += 1
     
-novels.find_elements(soup)
+    # export set
+    with open('novel_links.txt', 'w') as file:
+        for link in novels.link_to_extract:
+            file.write(link + '\n')
+
+except KeyboardInterrupt:
+    # export current set
+    with open('novel_links.txt', 'w') as file:
+        for link in novels.link_to_extract:
+            file.write(link + '\n')
+    exit("KeyboardInterrupt")
+    
+except Exception as e:
+    raise e
