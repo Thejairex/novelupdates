@@ -1,9 +1,8 @@
-import requests
 import cloudscraper
-import json
 import random
 import time
 import os
+import pandas as pd
 from bs4 import BeautifulSoup
 
 from proxy import Proxies
@@ -24,6 +23,7 @@ class Novel:
     
             
     def find_data(self, soup):
+        # try:
         title = soup.find('div', class_='seriestitlenu')
         description = soup.find('div', id='editdescription').find_all('p')
         type_ = soup.find('div', id='showtype').find('a').text
@@ -31,7 +31,11 @@ class Novel:
         genres = soup.find('div', id='seriesgenre').find_all('a')
         tags = soup.find('div', id='showtags').find_all('a')
         rating = soup.find('span', class_='uvotes').text
-        release_year = soup.find('div', id='edityear').text
+        if soup.find('div', id='edityear').text:
+            release_year = soup.find('div', id='edityear').text
+            release_year = int(release_year.strip())
+        else: release_year = 0000
+        
         cout_caps = soup.find('div', id='editstatus').text
         author = soup.find('div', id='showauthors').find('a').text
         
@@ -39,11 +43,11 @@ class Novel:
         if completed == "Yes": completed = True
         else: completed = False
         
-        # get recommendations (6 links)
-        # recommendations = soup.find_all('h5', class_="seriesother")[-2].find_all_next('a', limit = 6)
-        # recommendations = [recom.get('href') for recom in recommendations if recom.get('href').startswith("https://www.novelupdates.com/series/")]
-        # for recom in recommendations: 
-        #     if recom not in self.link_to_extract: self.link_to_extract.add(recom)
+        #get recommendations (6 links)
+        recommendations = soup.find_all('h5', class_="seriesother")[-2].find_all_next('a', limit = 6)
+        recommendations = [recom.get('href') for recom in recommendations if recom.get('href').startswith("https://www.novelupdates.com/series/")]
+        for recom in recommendations: 
+            if recom not in self.link_to_extract: self.link_to_extract.add(recom)
         
         return {
             "title": title.text,
@@ -53,7 +57,7 @@ class Novel:
             "genres": [genre.text for genre in genres],
             "tags": [tag.text for tag in tags],
             "rating": float(rating.split()[0].replace("(", "")),
-            "release_year": int(release_year.strip()),
+            "release_year": release_year,
             "captions": int(cout_caps.strip().split(" ")[0]),
             "completed": completed,
             "author": author
@@ -69,8 +73,25 @@ class Novel:
                     self.link_to_extract.add(url)
 
     
-    def find_elements(self, soup: BeautifulSoup):
-        pass
+    def create_dataset(self):
+        data = []
+        try:
+            print("Start scraping...")
+            for link in self.link_to_extract:
+                if link in self.link_extracted: continue
+                
+                soup = self.get_soup(link)
+                data.append(self.find_data(soup))
+                time.sleep(random.uniform(1,3))
+                self.link_extracted.add(link)
+                # self.link_to_extract.remove(link)
+            return data
+        except KeyboardInterrupt:
+            print(link)
+            return data
+        
+        except Exception as e:
+            raise e
     
     def export_links(self):
         with open('novel_links.txt', 'w') as file:
@@ -111,5 +132,7 @@ if __name__ == "__main__":
         novels.import_links()
 
     print(f"Total novels: {len(novels.link_to_extract)}")
-    print(f"View firts links: {list(novels.link_to_extract)[0:5]}")
-    print(f"View last links: {list(novels.link_to_extract)[-6:-1]}")
+    
+    
+    data = novels.create_dataset()
+    print(data)
