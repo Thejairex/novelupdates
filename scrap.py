@@ -31,9 +31,9 @@ class Novel:
         genres = soup.find('div', id='seriesgenre').find_all('a')
         tags = soup.find('div', id='showtags').find_all('a')
         rating = soup.find('span', class_='uvotes').text
-        if soup.find('div', id='edityear').text:
-            release_year = soup.find('div', id='edityear').text
-            release_year = int(release_year.strip())
+        
+        release_year = soup.find('div', id='edityear').text
+        if release_year and release_year != 'N/A': release_year = int(release_year.strip())
         else: release_year = 0000
         
         cout_caps = soup.find('div', id='editstatus').text
@@ -71,26 +71,28 @@ class Novel:
             if url:
                 if url.startswith("https://www.novelupdates.com/series/"):
                     self.link_to_extract.add(url)
-
     
     def create_dataset(self):
         data = []
         try:
             print("Start scraping...")
-            for link in self.link_to_extract:
-                if link in self.link_extracted: continue
+            while len(self.link_to_extract) != 0:
+                link = self.link_to_extract.pop()
+                print("Cantidad por extraer: ", len(self.link_to_extract))
                 
                 soup = self.get_soup(link)
                 data.append(self.find_data(soup))
                 time.sleep(random.uniform(1,3))
+                
                 self.link_extracted.add(link)
-                # self.link_to_extract.remove(link)
+                print("Extraidos: ", len(self.link_extracted))
             return data
+        
         except KeyboardInterrupt:
-            print(link)
             return data
         
         except Exception as e:
+            print("Link donde hubo un error:", link)
             raise e
     
     def export_links(self):
@@ -132,7 +134,6 @@ if __name__ == "__main__":
         novels.import_links()
 
     print(f"Total novels: {len(novels.link_to_extract)}")
-    
     
     data = novels.create_dataset()
     print(data)
