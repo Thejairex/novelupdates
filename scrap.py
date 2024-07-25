@@ -3,6 +3,7 @@ import random
 import time
 import os
 import pandas as pd
+import re
 from bs4 import BeautifulSoup
 
 from proxy import Proxies
@@ -31,13 +32,26 @@ class Novel:
         genres = soup.find('div', id='seriesgenre').find_all('a')
         tags = soup.find('div', id='showtags').find_all('a')
         rating = soup.find('span', class_='uvotes').text
+        author = soup.find('div', id='showauthors').find('a').text
+        if not author: author = "Unknown"
         
         release_year = soup.find('div', id='edityear').text
-        if release_year and release_year != 'N/A': release_year = int(release_year.strip())
-        else: release_year = 0000
+        if "N/A" not in release_year and release_year != "": 
+            try:
+                release_year = int(release_year.strip())
+            except:
+                release_year = re.findall(r'\b\d{4}\b', release_year)[0]
+        else: 
+            release_year = 0000
         
         cout_caps = soup.find('div', id='editstatus').text
-        author = soup.find('div', id='showauthors').find('a').text
+        cout_caps = cout_caps.strip().split()
+        if cout_caps[0] == "Oneshot": 
+            cout_caps = 1
+        else:
+            i = [word for word in cout_caps if word.isdigit()]
+            cout_caps = i[0] if i else 0
+        
         
         completed = soup.find('div', id='showtranslated').text.strip()
         if completed == "Yes": completed = True
@@ -58,9 +72,9 @@ class Novel:
             "tags": [tag.text for tag in tags],
             "rating": float(rating.split()[0].replace("(", "")),
             "release_year": release_year,
-            "captions": int(cout_caps.strip().split(" ")[0]),
+            "captions": int(cout_caps),
             "completed": completed,
-            "author": author
+            "author": author 
         }
 
     def find_links(self, soup: BeautifulSoup):
@@ -74,6 +88,7 @@ class Novel:
     
     def create_dataset(self):
         data = []
+        df = pd.DataFrame(columns=['title', 'description', 'type', 'region', 'genres', 'tags', 'rating', 'release_year', 'captions', 'completed', 'author'])
         try:
             print("Start scraping...")
             while len(self.link_to_extract) != 0:
@@ -81,18 +96,24 @@ class Novel:
                 print("Cantidad por extraer: ", len(self.link_to_extract))
                 
                 soup = self.get_soup(link)
+                # df = df.append(self.find_data(soup), ignore_index=True)
                 data.append(self.find_data(soup))
                 time.sleep(random.uniform(1,3))
                 
                 self.link_extracted.add(link)
                 print("Extraidos: ", len(self.link_extracted))
-            return data
+            df = df._append(data, ignore_index=True)
+            return df
         
         except KeyboardInterrupt:
-            return data
+            df = df._append(data, ignore_index=True)
+            # df = pd.DataFrame(data, columns=['title', 'description', 'type', 'region', 'genres', 'tags', 'rating', 'release_year', 'captions', 'completed', 'author'])
+            return df
         
         except Exception as e:
             print("Link donde hubo un error:", link)
+            df = df._append(data, ignore_index=True)
+            df.to_csv("novel.csv", index=False)
             raise e
     
     def export_links(self):
@@ -136,4 +157,4 @@ if __name__ == "__main__":
     print(f"Total novels: {len(novels.link_to_extract)}")
     
     data = novels.create_dataset()
-    print(data)
+    data.to_csv('novels.csv', index=False)
